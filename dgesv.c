@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mkl_lapacke.h"
+#include <omp.h>
 
 // Generate matrix of random values
 double *generate_matrix(int size, int seed)
@@ -92,6 +93,7 @@ void generate_id_matrix(double *matrix, int size) {
 
 // Substract row indice_row by row indice_r multiplied by val
 void Substract_Mult_Val(double *matrix,  int size, int indice_r, int indice_row, double val) {
+  #pragma omp parallel for 
   for (int j = 0; j < size; j++) {
     matrix[indice_row * size + j] -= matrix[indice_r * size + j] * val;
   }
@@ -122,10 +124,12 @@ void gauss1(double *matrix, double *I, int size) {
 
 // Make matricial product
 void matrix_multiplication(double *matrix1, double *matrix2, double *res ,int size) {
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
+  int i,j,k;
+  #pragma omp parallel for private(j,k) schedule(static)
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
             res[i * size + j] = 0;
-            for (int k = 0; k < size; k++) {
+            for (k = 0; k < size; k++) {
                 res[i * size + j] += matrix1[i * size + k] * matrix2[k * size + j];
             }
         }
@@ -165,11 +169,11 @@ void my_dgesv(double *a, double *b, double *res, int size) {
         info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, nrhs, aref, lda, ipiv, bref, ldb);
         printf("Time taken by MKL: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
 	
-        tStart = clock();    
-        MKL_INT *ipiv2 = (MKL_INT *)malloc(sizeof(MKL_INT)*size);        
+        double Start = omp_get_wtime();    
+        //MKL_INT *ipiv2 = (MKL_INT *)malloc(sizeof(MKL_INT)*size);        
         double *X = (double *)malloc(size * size * sizeof(double));
 	my_dgesv(a, b, X, size);
-        printf("Time taken by my implementation: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
+        printf("Time taken by my implementation: %.2fs\n", omp_get_wtime() - Start);
         
         if (check_result(bref,X ,size)==1)
             printf("Result is ok!\n");
