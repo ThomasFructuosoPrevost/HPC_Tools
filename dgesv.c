@@ -1,7 +1,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "mkl_lapacke.h"
+//#include "mkl_lapacke.h"
 #include <omp.h>
 
 // Generate matrix of random values
@@ -10,8 +10,8 @@ double *generate_matrix(int size, int seed)
     int i;
     double *matrix = (double *)malloc(sizeof(double) * size * size);
     srand(seed);
-
-    for (i = 0; i < size * size; i++)
+    int end = size*size;
+    for (i = 0; i < end; i++)
     {
         matrix[i] = rand() % 100;
     }
@@ -93,7 +93,7 @@ void generate_id_matrix(double *matrix, int size) {
 
 // Substract row indice_row by row indice_r multiplied by val
 void Substract_Mult_Val(double *matrix,  int size, int indice_r, int indice_row, double val) {
-  #pragma omp parallel for 
+  #pragma omp parallel for simd schedule(simd:static)
   for (int j = 0; j < size; j++) {
     matrix[indice_row * size + j] -= matrix[indice_r * size + j] * val;
   }
@@ -127,6 +127,7 @@ void matrix_multiplication(double *matrix1, double *matrix2, double *res ,int si
   int i,j,k;
   #pragma omp parallel for private(j,k) schedule(static)
     for (i = 0; i < size; i++) {
+      #pragma code_align(32)
         for (j = 0; j < size; j++) {
             res[i * size + j] = 0;
             for (k = 0; k < size; k++) {
@@ -162,12 +163,12 @@ void my_dgesv(double *a, double *b, double *res, int size) {
         //print_matrix("B", b, size);
 
         // Using MKL to solve the system
-        MKL_INT n = size, nrhs = size, lda = size, ldb = size, info;
-        MKL_INT *ipiv = (MKL_INT *)malloc(sizeof(MKL_INT)*size);
+        // MKL_INT n = size, nrhs = size, lda = size, ldb = size, info;
+        // MKL_INT *ipiv = (MKL_INT *)malloc(sizeof(MKL_INT)*size);
 
-        clock_t tStart = clock();
-        info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, nrhs, aref, lda, ipiv, bref, ldb);
-        printf("Time taken by MKL: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
+        // clock_t tStart = clock();
+        // info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, nrhs, aref, lda, ipiv, bref, ldb);
+        // printf("Time taken by MKL: %.2fs\n", (double)(clock() - tStart) / CLOCKS_PER_SEC);
 	
         double Start = omp_get_wtime();    
         //MKL_INT *ipiv2 = (MKL_INT *)malloc(sizeof(MKL_INT)*size);        
